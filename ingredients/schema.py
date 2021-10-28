@@ -1,5 +1,8 @@
 import graphene
+from graphene import relay
 from graphene_django import DjangoObjectType
+from graphene_django.filter import DjangoFilterConnectionField
+import django_filters
 
 from ingredients.models import Category, Ingredient
 
@@ -7,30 +10,61 @@ class CategoryType(DjangoObjectType):
     class Meta:
         model = Category
         fields = ("id", "name", "ingredients")
+        filter_fields = ["name", "ingredients"]
+        interfaces = (relay.Node, )
 
 class IngredientType(DjangoObjectType):
     class Meta:
         model = Ingredient
         fields = ("id", "name", "notes", "category")
+        filter_fields = {
+            'name': ['exact', 'icontains', 'istartswith'],
+            'notes': ['exact', 'icontains'],
+            'category': ['exact'],
+            'category__name': ['exact'],
+        }
+        interfaces = (relay.Node, )
+
+
+class IngredientsFilter(django_filters.FilterSet):
+    # Do case-insensitive lookups on 'name'
+    # name = django_filters.CharFilter(field_name='name', lookup_expr=['iexact'])
+    name = django_filters.CharFilter(field_name='name', lookup_expr='iexact')
+
+    class Meta:
+        model = Ingredient
+        fields = ['name']
+    
+    # @property
+    # def qs(self):
+    #     # The query context can be found in self.request.
+    #     return super(IngredientsFilter, self).qs.filter(category__name__iexact='Meat Product')
+
 
 class Query(graphene.ObjectType):
-    all_ingredients = graphene.List(IngredientType)
-    category_by_name = graphene.Field(CategoryType, name=graphene.String(required=True))
-    all_categories = graphene.List(CategoryType)
+    # all_ingredients = graphene.List(IngredientType)
+    # category_by_name = graphene.Field(CategoryType, name=graphene.String(required=True))
+    # all_categories = graphene.List(CategoryType)
 
-    def resolve_all_ingredients(root, info):
-        # We can easily optimize query count in the resolve method
-        return Ingredient.objects.select_related("category").all()
+    ingredients = relay.Node.Field(IngredientType)
+    all_ingredients = DjangoFilterConnectionField(IngredientType, filterset_class=IngredientsFilter)
 
-    def resolve_category_by_name(root, info, name):
-        try:
-            return Category.objects.get(name=name)
-        except Category.DoesNotExist:
-            return None
+    category = relay.Node.Field(CategoryType)
+    all_categories = DjangoFilterConnectionField(CategoryType)
+
+    # def resolve_all_ingredients(root, info):
+    #     # We can easily optimize query count in the resolve method
+    #     return Ingredient.objects.select_related("category").all()
+
+    # def resolve_category_by_name(root, info, name):
+    #     try:
+    #         return Category.objects.get(name=name)
+    #     except Category.DoesNotExist:
+    #         return None
     
-    def resolve_all_categories(root, info):
-        # We can easily optimize query count in the resolve method
-        return Category.objects.all()
+    # def resolve_all_categories(root, info):
+    #     # We can easily optimize query count in the resolve method
+    #     return Category.objects.all()
 
 # schema = graphene.Schema(query=Query)
 
