@@ -3,8 +3,10 @@ from graphene import relay
 from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 import django_filters
+from graphene_django.rest_framework.mutation import SerializerMutation
 
 from ingredients.models import Category, Ingredient
+from .serializers import CategorySerializer
 
 class CategoryType(DjangoObjectType):
     class Meta:
@@ -83,6 +85,30 @@ class Query(graphene.ObjectType):
 #             name=category.name,
 #         )
 
+class DeleteCategory(graphene.Mutation):
+    ok = graphene.Boolean()
+    
+    class Arguments:
+        id = graphene.ID()
+    
+    category = graphene.Field(CategoryType)
+
+    @classmethod
+    def mutate(cls, root, info, id):
+        category = Category.objects.get(pk=id)
+        category.delete()
+        return cls(ok=True)
+
+
+# mutation using serializer
+class CreateCategory(SerializerMutation):
+    delete_category = DeleteCategory.Field()
+
+    class Meta:
+        serializer_class = CategorySerializer
+        model_operations = ['create', 'update']
+        lookup_field = 'id'
+
 
 # class UpdateCategory(graphene.Mutation):
 
@@ -103,26 +129,15 @@ class Query(graphene.ObjectType):
 #         )
 
 
-class DeleteCategory(graphene.Mutation):
-
-    class Arguments:
-        id = graphene.ID()
-    
-    category = graphene.Field(CategoryType)
-
-    @classmethod
-    def mutate(cls, root, info, id):
-        category = Category.objects.get(pk=id)
-        category.delete()
 
 
-# class Mutation(graphene.ObjectType):
-#     create_category = CreateCategory.Field()
-
+class Mutation(graphene.ObjectType):
+    create_category = CreateCategory.Field()
+    # delete_category = DeleteCategory.Field()
 
 # class Mutation(graphene.ObjectType):
 #     update_category = UpdateCategory.Field()
 
 
-class Mutation(graphene.ObjectType):
-    delete_category = DeleteCategory.Field()
+# class Mutation(graphene.ObjectType):
+#     delete_category = DeleteCategory.Field()

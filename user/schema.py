@@ -1,6 +1,11 @@
 from django.contrib.auth import ( authenticate , get_user_model , login, logout )
 import graphene
 from graphene_django import DjangoObjectType
+from graphene_django.rest_framework.mutation import SerializerMutation
+
+
+from .serializers import UserSerializer
+
 
 
 class UserType(DjangoObjectType):
@@ -8,23 +13,30 @@ class UserType(DjangoObjectType):
         model = get_user_model()
 
 
-class CreateUser(graphene.Mutation):
-    user = graphene.Field(UserType)
+# class CreateUser(graphene.Mutation):
+#     user = graphene.Field(UserType)
 
-    class Arguments:
-        username = graphene.String(required=True)
-        password = graphene.String(required=True)
-        email = graphene.String(required=True)
+#     class Arguments:
+#         username = graphene.String(required=True)
+#         password = graphene.String(required=True)
+#         email = graphene.String(required=True)
 
-    def mutate(self, info, username, password, email):
-        user = get_user_model()(
-            username=username,
-            email=email,
-        )
-        user.set_password(password)
-        user.save()
+#     def mutate(self, info, username, password, email):
+#         user = get_user_model()(
+#             username=username,
+#             email=email,
+#         )
+#         user.set_password(password)
+#         user.save()
 
-        return CreateUser(user=user)
+#         return CreateUser(user=user)
+
+
+class CreateUser(SerializerMutation):
+    class Meta:
+        serializer_class = UserSerializer
+        model_operations = ['create', 'update']
+        lookup_field = 'id'
 
 
 class LoginUser(graphene.Mutation):
